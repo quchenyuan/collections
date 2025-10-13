@@ -113,12 +113,14 @@ $$
 
 假设正在处理 S=1024 个标记，并使用上面的 Qwen 配置（`num_hidden_layers=36，hidden_size=4096，num_attention_heads=32` ），我们可以很容易地估算出总的 FLOPs 为：
 
-$\begin{align}
+$$
+\begin{align}
 \text{Total FLOPs of Qwen Embedding} = {} & 36 \times \\
 & (10 \times 1024 \times \text{4096} + 25.5 \times 1024 \times \text{4096}^2 \\
 & + 4 \times 1024^2 \times \text{4096} + 5 \times 1024^2 \times \text{32})=\\
 & 16.4 \text{ TFLOPs}
-\end{align}$
+\end{align}
+$$
 
 利用这一点，我们可以轻松估算处理一个包含 1024 个标记的句子所需时间的上限。为此，我们需要查看 GPU 的浮点运算性能（FLOPS）和内存带宽。性能瓶颈可能出现在两个方面：需要执行太多操作（计算受限）或需要加载过多数据（内存受限）。
 
@@ -144,19 +146,28 @@ $\begin{align}
 模型大小可以根据参数量轻松估算：
 
 $$
+
 \text{7.57B parameters} \times \text{2 bytes per parameter} = \text{15.14GB}
+
+
 $$
 
 这意味着单次模型加载大约需要：
 
 $$
-\text{Forward pass time}_{memory} = \frac{\text{Total size of a model}}{\text{Memory bandwidth of an H100}} = \frac{15.14}{3.3TB/s} = \text{0.0046s}
+
+\text{Forward pass time}\_{memory} = \frac{\text{Total size of a model}}{\text{Memory bandwidth of an H100}} = \frac{15.14}{3.3TB/s} = \text{0.0046s}
+
+
 $$
 
 完成上述估算的 16.4 TFLOPs 计算量时，将等待大约:
 
 $$
-\text{Forward pass time}_{compute} = \frac{\text{Total FLOPs of forward pass}}{\text{Measured FLOPS of H100}} = \frac{16.4 \text{ TFLOPs}}{750 \text{TFLOPS}}= 0,021s
+
+\text{Forward pass time}\_{compute} = \frac{\text{Total FLOPs of forward pass}}{\text{Measured FLOPS of H100}} = \frac{16.4 \text{ TFLOPs}}{750 \text{TFLOPS}}= 0,021s
+
+
 $$
 
 实际上，GPU 上的内存加载和计算在一定程度上是重叠的，这意味着限制性能的因素将是这两个时间中的较大者——在这种情况下是计算时间，换句话说，计算将更偏向于计算密集型而非内存密集型。
@@ -164,7 +175,10 @@ $$
 假设单次前向传播需要 0.021 秒，可以估算嵌入吞吐量的上限为：
 
 $$
-\text{Embeddings per second} = \frac{1s}{\text{Forward pass time}_{compute}} = \frac{1s}{0.021s} = \approx 47
+
+\text{Embeddings per second} = \frac{1s}{\text{Forward pass time}\_{compute}} = \frac{1s}{0.021s} = \approx 47
+
+
 $$
 
 实际上，我们无法达到上述这些精确的数字。内存和计算量的数据仅代表理论上限。由于内存与计算重叠不完全、内核启动开销以及各种计算效率低下等因素，实际性能会有所下降。
@@ -190,9 +204,11 @@ CUDA_VISIBLE_DEVICES=15 python3 -m sglang.launch_server \
 同样，在 810E 上测试得到的值为（5.4），与计算得到的值 7.5 有差距：
 
 $$
-\text{Forward pass time}_{compute} = \frac{\text{Total FLOPs of forward pass}}{\text{Measured FLOPS of 810E}} = \frac{16.4 \text{ TFLOPs}}{123 \;\text{TFLOPS}}= 0.133s \\
+\begin{align}
+\text{Forward pass time}\_{compute} = \frac{\text{Total FLOPs of forward pass}}{\text{Measured FLOPS of 810E}} = \frac{16.4 \text{ TFLOPs}}{123 \;\text{TFLOPS}}= 0.133s \\
 
-\text{Embeddings per second} = \frac{1s}{\text{Forward pass time}_{compute}} = \frac{1s}{0.133s} = \approx 7.5
+\text{Embeddings per second} = \frac{1s}{\text{Forward pass time}\_{compute}} = \frac{1s}{0.133s} = \approx 7.5
+\end{align}
 $$
 
 ![image-20250929113721453](images/embedding_plot.png)
@@ -280,8 +296,11 @@ Torch Profiler 会以统一的时间线显示 CPU 和 GPU 的活动，但它们�
 此外，计算出在不同批次大小下每秒处理的总标记数很容易。例如，对于长度为 1040 个标记、批量大小为 4 的序列：
 
 $$
+
 \text{Embeddings/second} \times \text{Tokens per embedding} = \\
-32.2\; \text{embeddings/s} \times 1040\; \text{tokens/embedding} =  33488\; \text{tokens/s}
+32.2\; \text{embeddings/s} \times 1040\; \text{tokens/embedding} = 33488\; \text{tokens/s}
+
+
 $$
 
 根据图 H100 中的数据，可以整理表格展示每秒处理的标记数。这些数字大约在每秒 45,000 个标记左右趋于饱和，这再次说明计算已达到计算瓶颈。
@@ -291,8 +310,11 @@ $$
 假设以每小时 2 美元的价格租赁 H100 显卡，可以估算出生成一百万 token 的成本。对于一批大小为 4、输入序列长度为 1040 token 的嵌入计算，其成本大约为：
 
 $$
+
 \text{Cost per million tokens} = \frac{\text{GPU cost per hour}}{\text{tokens per second} \times 3600} \times 10^6 \\
-=  \frac{\$2/\text{hr}}{33{,}488 \text{ tokens/s} \times 3600 \text{ s/hr}} \times 10^6 = \$0.0166
+= \frac{\$2/\text{hr}}{33{,}488 \text{ tokens/s} \times 3600 \text{ s/hr}} \times 10^6 = \$0.0166
+
+
 $$
 
 每处理一百万个标记只需 1.66 美分。下表展示了不同设置下的估算价格：
@@ -310,7 +332,10 @@ $$
 H100 在这项对比中占据优势，其每美元的浮点运算性能（FLOPS）比三款对比的 GPU 中最高。然而， H100 受限于功耗。NVIDIA 承诺的 989 TFLOPS 无法实现。使用更现实的 750 TFLOPS（如图 5 中估算），每美元的 TFLOPS 比率将降至 750/2=375，远低于 RTX 4090 理论上的 445。而通过相同的矩阵乘法基准测试，RTX 4090 非常接近 NVIDIA 的规格说明。价格差异显著：H100 的价格是 RTX 4090 的 5.4 倍（$2/$0.37），而性能差异仅为：
 
 $$
+
 \frac{\text{Real FLOPS of H100}}{\text{Real FLOPS of 4090}}=\frac{750}{165}\approx 4.5
+
+
 $$
 
 这表明 RTX 4090 在嵌入生成方面能提供更高的单价性能。由于嵌入计算主要由大规模矩阵乘法主导，此基准性能差异应能准确预测实际嵌入吞吐量的差异。显而易见的是，性能差异小于 H100 与 4090 之间的价格差异——这意味着每花费一美元，能够生成更多的文本标记。下表中计算了 4090 每秒处理的标记数量：
@@ -320,7 +345,10 @@ $$
 假设每小时支付 0.37 美元来使用 4090 显卡，并且用它持续地以批量大小为 4 对一个包含 1040 个标记的输入序列进行嵌入，这大约相当于
 
 $$
+
 \text{Cost per million tokens} = \frac{\$0.37/\text{hr}}{9672 \text{ tokens/s} \times 3600 \text{ s/hr}} \times 10^6 = \$0,01062
+
+
 $$
 
 或者每 100 万令牌约 1 美分，比 H100 上实现的数字便宜 36%。

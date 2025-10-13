@@ -56,15 +56,15 @@ class ColumnParallelLinear(LinearBase):
 
 - `tp_dim` 表示**在权重参数的哪个维度上进行分片（sharding）**。
 - 对于 PyTorch 的 `nn.Linear`，权重 shape 是 `[output_size, input_size]`。
-- `ColumnParallelLinear` 是**在输出维度（第0维）上分片**，即每张卡负责一部分输出特征，此时`tp_dim=0` 
+- `ColumnParallelLinear` 是**在输出维度（第 0 维）上分片**，即每张卡负责一部分输出特征，此时`tp_dim=0`
 
 假设：`input_size = 8`，`output_size = 4`，`tp_size = 2`（两卡并行）
 
-- 原始权重的shape为：`[4,8]` 
+- 原始权重的 shape 为：`[4,8]`
 
-- **tp_dim = 0**：在第0维（输出维度）分片
+- **tp_dim = 0**：在第 0 维（输出维度）分片
   - 每张卡的权重 shape 是 `[2, 8]`
-  - 第1卡负责前2行，第2卡负责后2行
+  - 第 1 卡负责前 2 行，第 2 卡负责后 2 行
 
 ```shell
  W=torch.range(0,31).reshape(4,8)
@@ -125,9 +125,9 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
 
 - `loaded_shard_id` 表示当前要加载的是第几个**输出分支**的权重。
 
-  假设有三个输出分支：`output_sizes = [128, 256, 64]`，当`tp_size = 4`（4卡并行）时，每个分支会在每张卡上分到 `output_size // tp_size` 个输出单元，所以每张卡的本地分支输出维度就是 `[32, 64, 16]`。即在每张卡上，`output_partition_sizes = [32, 64, 16]`。
+  假设有三个输出分支：`output_sizes = [128, 256, 64]`，当`tp_size = 4`（4 卡并行）时，每个分支会在每张卡上分到 `output_size // tp_size` 个输出单元，所以每张卡的本地分支输出维度就是 `[32, 64, 16]`。即在每张卡上，`output_partition_sizes = [32, 64, 16]`。
 
-- `shard_offset = sum(self.output_sizes[:loaded_shard_id]) // self.tp_size`，计算指定分支在本卡上的起始位置（偏移量）。例如，`loaded_shard_id=1` 时，`shard_offset = (128) // 4 = 32`，表示第二个分支在本卡的起始位置是32。
+- `shard_offset = sum(self.output_sizes[:loaded_shard_id]) // self.tp_size`，计算指定分支在本卡上的起始位置（偏移量）。例如，`loaded_shard_id=1` 时，`shard_offset = (128) // 4 = 32`，表示第二个分支在本卡的起始位置是 32。
 
 - `shard_size = self.output_sizes[loaded_shard_id] // self.tp_size`，计算本分支在本卡上的分片大小。例如，`loaded_shard_id=1` 时，`shard_size = 256 // 4 = 64`。
 
@@ -163,11 +163,11 @@ class QKVParallelLinear(ColumnParallelLinear):
         self.output_sizes = [
             self.num_heads * self.head_size * tp_size,  # q_proj
             self.num_kv_heads * self.head_size * tp_size,  # k_proj
-            self.num_kv_heads * self.head_size * tp_size,  # v_proj 
+            self.num_kv_heads * self.head_size * tp_size,  # v_proj
         ]
 
         super().__init__(input_size, output_size, bias)
-   
+
      def weight_loader(self, param: nn.Parameter, loaded_weight: torch.Tensor, loaded_shard_id: str):
         param_data = param.data
         assert loaded_shard_id in ["q", "k", "v"]
@@ -229,13 +229,13 @@ class RowParallelLinear(LinearBase):
         return y
 ```
 
-基本逻辑与ColumnParallelLinear一致，这里仅比较两者的不同点：
+基本逻辑与 ColumnParallelLinear 一致，这里仅比较两者的不同点：
 
 **分片维度：**
 
-- `ColumnParallelLinear` 在权重的第0维（输出维度）分片（`tp_dim=0`）。每张卡负责部分输出特征，权重 shape: `[output_size // tp_size, input_size]`。
+- `ColumnParallelLinear` 在权重的第 0 维（输出维度）分片（`tp_dim=0`）。每张卡负责部分输出特征，权重 shape: `[output_size // tp_size, input_size]`。
 
-- `RowParallelLinear` 在权重的第1维（输入维度）分片（`tp_dim=1`）。每张卡负责部分输入特征，权重 shape: `[output_size, input_size // tp_size]`。
+- `RowParallelLinear` 在权重的第 1 维（输入维度）分片（`tp_dim=1`）。每张卡负责部分输入特征，权重 shape: `[output_size, input_size // tp_size]`。
 
 **输入输出 shape**：
 
@@ -252,7 +252,7 @@ class RowParallelLinear(LinearBase):
 - `ColumnParallelLinear`：QKV 合并线性层、MLP 的输出层等。
 - `RowParallelLinear`：Embedding 后的第一层线性、MLP 的输入层等。
   - Embedding 层输出 shape 通常是 `[B, S, H]`，`hidden_size` 很大（比如 4096、8192），用 RowParallelLinear，可以把输入特征（hidden_size）在多卡上分片，每张卡只处理一部分输入特征，显存占用大大降低。
-  - 多头注意力机制中，每个 head 会输出一个 `[B, S, head_dim]` 的张量，所有 head 的输出会在最后一个维度（特征维度）上拼接（concat），得到 `[B, S, num_heads * head_dim]`，也就是 `[B, S, H]`。这个拼接后的张量会经过一个线性变换（ **o_proj**），由于拼接后的shape中，hidden_size很大，因此`o_proj` 定义为 RowParallelLinear，最后通过all_reduce聚合，得到完整的 `[B, S, H]` 张量，作为 **MLP 层的输入**。
+  - 多头注意力机制中，每个 head 会输出一个 `[B, S, head_dim]` 的张量，所有 head 的输出会在最后一个维度（特征维度）上拼接（concat），得到 `[B, S, num_heads * head_dim]`，也就是 `[B, S, H]`。这个拼接后的张量会经过一个线性变换（ **o_proj**），由于拼接后的 shape 中，hidden_size 很大，因此`o_proj` 定义为 RowParallelLinear，最后通过 all_reduce 聚合，得到完整的 `[B, S, H]` 张量，作为 **MLP 层的输入**。
 
 | 类别                 | 分片维度 | 权重 shape                    | 输入 shape              | 输出 shape               | 前向聚合方式 |
 | -------------------- | -------- | ----------------------------- | ----------------------- | ------------------------ | ------------ |
@@ -261,7 +261,7 @@ class RowParallelLinear(LinearBase):
 
 ## MLP
 
-以典型的 Transformer Block 为例，MLP 结构：输入 → 线性变换（升维）→ 激活 → 线性变换（降维）→ 输出MLP
+以典型的 Transformer Block 为例，MLP 结构：输入 → 线性变换（升维）→ 激活 → 线性变换（降维）→ 输出 MLP
 
 1. **输入**：多头注意力的输出，shape 通常为 `[B, S, H]`。
 2. **第一层线性变换**（输入层，通常用 **ColumnParallelLinear**）：
@@ -288,24 +288,26 @@ class RowParallelLinear(LinearBase):
 
 假设：H = 4096，I = 11008，tp = 4
 
-| 方案          | 第一层输入               | 第一层权重               | 第一层输出                         | 第二层输入               | 第二层权重               | 第二层输出                                | 激活显存（第二层输入+输出） | 第一层输出到第二层输入 | 通信量                                                       |
-| ------------- | ------------------------ | ------------------------ | ---------------------------------- | ------------------------ | ------------------------ | ----------------------------------------- | --------------------------- | ---------------------- | ------------------------------------------------------------ |
-| A     Row,Col | [B,S,H/4]     [B,S,1024] | [I,H/4]     [11008,1024] | [B,S,11008]     （all-reduce聚合） | [B,S,I]     [B,S,11008]  | [H/4,I]     [1024,11008] | [B,S,1024]     （最终gather为[B,S,4096]） | 11008+1024=12032            | all-reduce             | 第一层 all-reduce [B,S,11008]     第二层 gather [B,S,4096]   |
-| B     Row,Row | [B,S,H/4]     [B,S,1024] | [I,H/4]     [11008,1024] | [B,S,11008]     （all-reduce聚合） | [B,S,I/4]     [B,S,2752] | [H,I/4]     [4096,2752]  | [B,S,4096]     （all-reduce聚合）         | 2752+4096=6848              | all-reduce             | 第一层 all-reduce [B,S,11008]     第二层 all-reduce  [B,S,4096] |
-| C     Col,Col | [B,S,H]     [B,S,4096]   | [I/4,H]     [2752,4096]  | [B,S,I/4]     [B,S,2752]           | [B,S,I/4]     [B,S,2752] | [H/4,I]     [1024,11008] | 权重shape不匹配，无法直接操作             |                             |                        |                                                              |
-| D     Col,Row | [B,S,H]     [B,S,4096]   | [I/4,H]     [2752,4096]  | [B,S,I/4]     [B,S,2752]           | [B,S,I/4]     [B,S,2752] | [H,I/4]     [4096,2752]  | [B,S,4096]     （all-reduce聚合）         | 2752+4096=6848              | 无需操作               | 第二层 all-reduce [B,S,4096]                                 |
+| 方案      | 第一层输入           | 第一层权重           | 第一层输出                      | 第二层输入           | 第二层权重           | 第二层输出                              | 激活显存（第二层输入+输出） | 第一层输出到第二层输入 | 通信量                                                     |
+| --------- | -------------------- | -------------------- | ------------------------------- | -------------------- | -------------------- | --------------------------------------- | --------------------------- | ---------------------- | ---------------------------------------------------------- |
+| A Row,Col | [B,S,H/4] [B,S,1024] | [I,H/4] [11008,1024] | [B,S,11008] （all-reduce 聚合） | [B,S,I] [B,S,11008]  | [H/4,I] [1024,11008] | [B,S,1024] （最终 gather 为[B,S,4096]） | 11008+1024=12032            | all-reduce             | 第一层 all-reduce [B,S,11008] 第二层 gather [B,S,4096]     |
+| B Row,Row | [B,S,H/4] [B,S,1024] | [I,H/4] [11008,1024] | [B,S,11008] （all-reduce 聚合） | [B,S,I/4] [B,S,2752] | [H,I/4] [4096,2752]  | [B,S,4096] （all-reduce 聚合）          | 2752+4096=6848              | all-reduce             | 第一层 all-reduce [B,S,11008] 第二层 all-reduce [B,S,4096] |
+| C Col,Col | [B,S,H] [B,S,4096]   | [I/4,H] [2752,4096]  | [B,S,I/4] [B,S,2752]            | [B,S,I/4] [B,S,2752] | [H/4,I] [1024,11008] | 权重 shape 不匹配，无法直接操作         |                             |                        |                                                            |
+| D Col,Row | [B,S,H] [B,S,4096]   | [I/4,H] [2752,4096]  | [B,S,I/4] [B,S,2752]            | [B,S,I/4] [B,S,2752] | [H,I/4] [4096,2752]  | [B,S,4096] （all-reduce 聚合）          | 2752+4096=6848              | 无需操作               | 第二层 all-reduce [B,S,4096]                               |
 
-目前**主流大模型训练和推理框架都采用D方案，是工程和通信权衡的最佳结果。**
+目前**主流大模型训练和推理框架都采用 D 方案，是工程和通信权衡的最佳结果。**
 
 # 位置编码
 
 ## 方程
 
-RoPE的方程式：
+RoPE 的方程式：
+
 $$
 PE(pos,2i)&=sin(\frac{pos}{10000^{2i/d}}) \\
 PE(pos,2i+1)&=cos(\frac{pos}{10000^{2i/d}})\\
 $$
+
 其中：
 
 - `pos` 是指 token 在输入序列中的**位置索引**。对于每一个输入 token，可以通过其在序列中的索引来标识其具体位置。在一个长度为 `L` 的输入序列中，位置索引 `pos` 取值范围从 `0` 到 `L-1`。
@@ -357,7 +359,7 @@ class RotaryEmbedding(nn.Module):
 ### Forward
 
 ```python
- 
+
 class RotaryEmbedding(nn.Module):
     # ...
     @torch.compile
@@ -382,7 +384,7 @@ class RotaryEmbedding(nn.Module):
         key = key.view(num_tokens, -1, self.head_size)
         key = apply_rotary_emb(key, cos, sin).view(key_shape)
         return query, key
-      
+
 def apply_rotary_emb(
     x: torch.Tensor,
     cos: torch.Tensor,
@@ -390,7 +392,7 @@ def apply_rotary_emb(
 ) -> torch.Tensor:
     # 向张量中添加维度,在指定位置插入一个大小为 1 的新维度
     # 得到一个3维张量[num_tokens, 1, rotary_dim/2]
-    cos = cos.unsqueeze(-2) 
+    cos = cos.unsqueeze(-2)
     sin = sin.unsqueeze(-2)
     # 三维张量 [num_tokens, num_heads, head_size/2]
     x1, x2 = torch.chunk(x.to(torch.float32), 2, dim=-1)
@@ -435,10 +437,8 @@ x1, x2 = torch.chunk(x, 2, dim=-1)  # x1, x2: (4, 2, 4)
 
 **PyTorch 广播规则：**
 
-- 维度从右往左对齐，不一致的维度如果有1会自动扩展。
-- 所以 `(4, 2, 4)` 和 `(4, 1, 4)` 可以广播成 `(4, 2, 4)`，即每个 head 都用同一个 cos/sin。
-
-
+- 维度从右往左对齐，不一致的维度如果有 1 会自动扩展。
+- 所以 `(4, 2, 4)` 和 `(4, 1, 4)` 可以广播成 `(4, 2, 4)`，即每个 head 都用同一个 cos/sin.
 
 ### Cache
 
@@ -469,11 +469,9 @@ def get_rope(
 - `rotary_dim` 是旋转维度（等于 `head_dim`）
 - `4` 是因为使用 `torch.float` (float32) 类型，每个元素占 4 字节
 
-以[通义千问3-8B](https://www.modelscope.cn/models/Qwen/Qwen3-8B/file/view/master/config.json?status=1)为例，内存占用约为：
+以[通义千问 3-8B](https://www.modelscope.cn/models/Qwen/Qwen3-8B/file/view/master/config.json?status=1)为例，内存占用约为：
 
 $40960 * 4096 * 4 /1024 /1024=640\;MB$
-
-
 
 # embed_head
 
@@ -493,7 +491,7 @@ class VocabParallelEmbedding(nn.Module):
         assert num_embeddings % self.tp_size == 0
         self.num_embeddings = num_embeddings
         # 每张卡负责一部分单词的嵌入
-        self.num_embeddings_per_partition = self.num_embeddings // self.tp_size 
+        self.num_embeddings_per_partition = self.num_embeddings // self.tp_size
         self.vocab_start_idx = self.num_embeddings_per_partition * self.tp_rank
         self.vocab_end_idx = self.vocab_start_idx + self.num_embeddings_per_partition
         self.embedding_dim = embedding_dim
@@ -525,11 +523,11 @@ class VocabParallelEmbedding(nn.Module):
 
 ```
 
-重点解释一下这里的Forward，如果是单卡则不需要进行分批，直接嵌入查找并返回结果即可。
+重点解释一下这里的 Forward，如果是单卡则不需要进行分批，直接嵌入查找并返回结果即可。
 
-当张量并行时，由于每张卡上只负责加载一部分的嵌入权重，每张卡只负责自己分片内的词汇嵌入。当用户输入TokenIDs后，需要检查哪些ID属于当前分片，`vocab_start_idx` 和 `vocab_end_idx` 定义了当前 GPU 负责的词汇 ID 范围。
+当张量并行时，由于每张卡上只负责加载一部分的嵌入权重，每张卡只负责自己分片内的词汇嵌入。当用户输入 TokenIDs 后，需要检查哪些 ID 属于当前分片，`vocab_start_idx` 和 `vocab_end_idx` 定义了当前 GPU 负责的词汇 ID 范围。
 
-由于`F.embedding` 会使用本地的权重分片进行嵌入查找，因此还需要将Token ID转化为本地的索引（减去起始偏移）。
+由于`F.embedding` 会使用本地的权重分片进行嵌入查找，因此还需要将 Token ID 转化为本地的索引（减去起始偏移）。
 
 举例说明：
 
@@ -537,11 +535,11 @@ class VocabParallelEmbedding(nn.Module):
 # 配置
 vocab_size = 12 # 词汇表大小
 tp_size = 4 # 4个GPU
-embedding_dim = 8 
+embedding_dim = 8
 
 # 每个 GPU 的分片配置
 GPU 0: vocab_range = [0, 3)   # 负责 token ID: 0,1,2
-GPU 1: vocab_range = [3, 6)   # 负责 token ID: 3,4,5  
+GPU 1: vocab_range = [3, 6)   # 负责 token ID: 3,4,5
 GPU 2: vocab_range = [6, 9)   # 负责 token ID: 6,7,8
 GPU 3: vocab_range = [9, 12)  # 负责 token ID: 9,10,11
 
@@ -549,7 +547,7 @@ GPU 3: vocab_range = [9, 12)  # 负责 token ID: 9,10,11
 input_ids = [1, 4, 7, 10]  # 4 个 token
 ```
 
-以GPU1为例，其执行过程如下：
+以 GPU1 为例，其执行过程如下：
 
 ```shell
 # GPU 1: vocab_start_idx=3, vocab_end_idx=6
@@ -594,7 +592,7 @@ class ParallelLMHead(VocabParallelEmbedding):
             self.bias.weight_loader = self.weight_loader
         else:
             self.register_parameter("bias", None)
-            
+
 
     def forward(self, x: torch.Tensor):
         context = get_context()
@@ -613,11 +611,11 @@ class ParallelLMHead(VocabParallelEmbedding):
 
 ```
 
-同样，重点看一下Forward部分。
+同样，重点看一下 Forward 部分。
 
-1. 在代码中，对prefill阶段做了特殊处理。 **prefill 阶段**，模型需要处理完整的输入序列来构建 KV Cache。但对于语言模型，只需要预测每个序列的**最后一个 token**。在decode阶段，每次输入只有一个Token，因此不需要提取。
+1. 在代码中，对 prefill 阶段做了特殊处理。 **prefill 阶段**，模型需要处理完整的输入序列来构建 KV Cache。但对于语言模型，只需要预测每个序列的**最后一个 token**。在 decode 阶段，每次输入只有一个 Token，因此不需要提取。
 
-- `cu_seqlens_q` （Cumulative sequence lengths for Q）是Q的累积序列长度数组。
+- `cu_seqlens_q` （Cumulative sequence lengths for Q）是 Q 的累积序列长度数组。
 
 ```python
 # 假设有3个序列，长度分别为 [5, 7, 8]
@@ -628,8 +626,8 @@ x = x[last_indices].contiguous()
 # 处理后 x 形状: [3, hidden_dim] (只保留每个序列的最后一个token)
 ```
 
-2. 计算logits：执行线性变换`logits = x @ weight.T + bias`，将隐藏状态映射到词汇表空间。在张量并行下，每个 GPU 只计算词汇表的一部分
-3. 聚合logits：`gather` 将所有 GPU 的 logits 收集到 rank 0，然后拼接成完整的词汇表。只有 rank 0 的 GPU 得到完整结果，其他 GPU 返回 `None`
+2. 计算 logits：执行线性变换`logits = x @ weight.T + bias`，将隐藏状态映射到词汇表空间。在张量并行下，每个 GPU 只计算词汇表的一部分
+3. 聚合 logits：`gather` 将所有 GPU 的 logits 收集到 rank 0，然后拼接成完整的词汇表。只有 rank 0 的 GPU 得到完整结果，其他 GPU 返回 `None`
 
 举例说明：
 
@@ -670,7 +668,7 @@ def default_weight_loader(param: nn.Parameter, loaded_weight: torch.Tensor):
 
 
 def load_model(model: nn.Module, path: str):
-    // 
+    //
     packed_modules_mapping = getattr(model, "packed_modules_mapping", {})
     for file in glob(os.path.join(path, "*.safetensors")):
         with safe_open(file, "pt", "cpu") as f:
@@ -699,7 +697,7 @@ def load_model(model: nn.Module, path: str):
 class Qwen3ForCausalLM(nn.Module):
     packed_modules_mapping = {
         "q_proj": ("qkv_proj", "q"),
-        "k_proj": ("qkv_proj", "k"), 
+        "k_proj": ("qkv_proj", "k"),
         "v_proj": ("qkv_proj", "v"),
         "gate_proj": ("gate_up_proj", 0),
         "up_proj": ("gate_up_proj", 1),
@@ -728,9 +726,9 @@ class Qwen3ForCausalLM(nn.Module):
     "model.layers.0.self_attn.q_proj.weight": "model-00001-of-00017.safetensors",
     "model.layers.0.self_attn.v_proj.weight": "model-00001-of-00017.safetensors",
   }
-  
+
 layers.0.self_attn.q_proj.weight    # Query 投影权重
-layers.0.self_attn.k_proj.weight    # Key 投影权重  
+layers.0.self_attn.k_proj.weight    # Key 投影权重
 layers.0.self_attn.v_proj.weight    # Value 投影权重
 layers.0.mlp.gate_proj.weight       # Gate 投影权重
 layers.0.mlp.up_proj.weight         # Up 投影权重
@@ -742,7 +740,7 @@ layers.0.mlp.up_proj.weight         # Up 投影权重
 # 在 Qwen3Attention 中
 self.qkv_proj = QKVParallelLinear(...)  # 融合了 q_proj + k_proj + v_proj
 
-# 在 Qwen3MLP 中  
+# 在 Qwen3MLP 中
 self.gate_up_proj = MergedColumnParallelLinear(...)  # 融合了 gate_proj + up_proj
 ```
 
@@ -750,18 +748,16 @@ self.gate_up_proj = MergedColumnParallelLinear(...)  # 融合了 gate_proj + up_
 
 ![image-20250701153036406](/Users/qcy/Library/Application Support/typora-user-images/image-20250701153036406.png)
 
-
-
 因此，在加载模型时，需要通过权重名称匹配进行转化，将原来分离的权重合并为当前实现支持的融合权重。
 
 ```python
 def load_model(model: nn.Module, path: str):
     packed_modules_mapping = getattr(model, "packed_modules_mapping", {})
-    
+
     for weight_name in f.keys():  # 来自 safetensor 文件的原始权重名称
         for k in packed_modules_mapping:
           # 例如 "q_proj" in "layers.0.self_attn.q_proj.weight"
-            if k in weight_name:  
+            if k in weight_name:
                 v, shard_id = packed_modules_mapping[k]  # ("qkv_proj", "q")
                 param_name = weight_name.replace(k, v)   # 转换成融合模块的名称
                 # "layers.0.self_attn.q_proj.weight" → "layers.0.self_attn.qkv_proj.weight"
@@ -772,13 +768,13 @@ def load_model(model: nn.Module, path: str):
 ```shell
 # 原始 safetensor 中的权重名称 → 转换后的参数名称
 "layers.0.self_attn.q_proj.weight" → "layers.0.self_attn.qkv_proj.weight" (shard_id="q")
-"layers.0.self_attn.k_proj.weight" → "layers.0.self_attn.qkv_proj.weight" (shard_id="k")  
+"layers.0.self_attn.k_proj.weight" → "layers.0.self_attn.qkv_proj.weight" (shard_id="k")
 "layers.0.self_attn.v_proj.weight" → "layers.0.self_attn.qkv_proj.weight" (shard_id="v")
 "layers.0.mlp.gate_proj.weight"    → "layers.0.mlp.gate_up_proj.weight"   (shard_id=0)
 "layers.0.mlp.up_proj.weight"      → "layers.0.mlp.gate_up_proj.weight"   (shard_id=1)
 ```
 
-融合模块通过自定义的weight_loader来处理权重加载的逻辑，以QKV为例：
+融合模块通过自定义的 weight_loader 来处理权重加载的逻辑，以 QKV 为例：
 
 ```python
     def weight_loader(self, param: nn.Parameter, loaded_weight: torch.Tensor, loaded_shard_id: str):
@@ -805,8 +801,6 @@ def load_model(model: nn.Module, path: str):
 
 ```
 
-
-
 # ModelRunner
 
 ## KV_Cache
@@ -820,16 +814,14 @@ v_storage_per_token = num_kv_heads * head_dim * dtype_size  # V 向量
 total_per_token_per_layer = 2 * num_kv_heads * head_dim * dtype_size
 ```
 
-如果一个Block中包含多个tokens，则单层中一个Block需要的存储空间为：
+如果一个 Block 中包含多个 tokens，则单层中一个 Block 需要的存储空间为：
 
 ```python
 block_storage_per_layer = block_size * 2 * num_kv_heads * head_dim * dtype_size
 ```
 
-因此，整个Transformer模型中，一个Block的存储空间为：
+因此，整个 Transformer 模型中，一个 Block 的存储空间为：
 
 ```python
 block_bytes = 2 * num_hidden_layers * block_size * num_kv_heads * head_dim * dtype_size
 ```
-
-

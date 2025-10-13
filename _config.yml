@@ -1,4 +1,6 @@
 title: 荟聚
+# 为项目页设置 baseurl，匹配仓库名
+baseurl: /collections
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
   - jekyll-remote-theme

@@ -20,7 +20,7 @@ $$
 
 嵌入接口的特别之处在于其使用成本极其低廉。虽然 OpenAI 对其 O1 推理模型收取高达每百万输入 token 15 美元、每百万输出 token 60 美元的费用，但嵌入模型的价格却低得惊人——最受欢迎的`text-embedding-ada-002`模型仅需每百万输入 token 10 美分（见图 1）。
 
-![图 1：截至 2025 年 9 月 13 日的 OpenAI 嵌入式定价](images/leaderboard.png)
+![图 1：截至 2025 年 9 月 13 日的 OpenAI 嵌入式定价](./images/leaderboard.png)
 
 
 

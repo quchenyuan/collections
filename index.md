@@ -1,8 +1,3 @@
----
-layout: default
-title: 文档导航
----
-
 # 文档导航
 
 {% assign md_files = site.pages | sort: "path" | where_exp: "item", "item.path contains '.md'" %}

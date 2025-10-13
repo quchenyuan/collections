@@ -1,26 +1,41 @@
+---
+layout: compress
+---
+
 <!DOCTYPE html>
-<html>
+<html lang="{{ site.lang | default: 'en-US' }}">
 <head>
-  <meta charset="utf-8">
-  <title>{{ page.title }}</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% seo %}
+  <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision }}">
+  <!-- 手动加载 MathJax -->
   <script>
-    MathJax = { tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}, svg: {fontCache: 'global'} };
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEnvironments: true,
+        processRefs: true
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+  </script>
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="{{ "/" | relative_url }}">首页</a></li>
-      <li><a href="{{ "/inference/embeddings.html" | relative_url }}">embeddings</a></li>
-      <li><a href="{{ "/LLM/GPT-oss.html" | relative_url }}">GPT-oss</a></li>
-      <li><a href="{{ "/MMDiT/stable-diffusion-3.html" | relative_url }}">Stable Diffusion 3</a></li>
-      <!-- 其他目录 -->
-    </ul>
-  </nav>
-  <hr>
-
-  {{ content }}
+  <div class="container-lg px-3 my-5 markdown-body">
+    {{ content }}
+  </div>
+  {% if site.github.private != true and site.github.license %}
+  <div class="footer border-top border-gray-light mt-5 pt-3 text-right text-gray">
+    This site is open source. {% github_edit_link "Improve this page" %}.
+  </div>
+  {% endif %}
 </body>
 </html>
-

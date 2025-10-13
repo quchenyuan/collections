@@ -304,8 +304,10 @@ class RowParallelLinear(LinearBase):
 RoPE 的方程式：
 
 $$
+\begin{align}
 PE(pos,2i)&=sin(\frac{pos}{10000^{2i/d}}) \\
 PE(pos,2i+1)&=cos(\frac{pos}{10000^{2i/d}})\\
+\end{align}
 $$
 
 其中：

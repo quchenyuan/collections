@@ -25,6 +25,64 @@
     <script type="text/javascript" id="MathJax-script" async
       src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
     </script>
+    
+    <!-- 添加 JSON 样式 -->
+    <style>
+      /* 代码块样式 */
+      .highlight pre,
+      pre.highlight {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      
+      /* JSON 代码块特殊样式 */
+      .highlight pre:has(code[data-lang="json"]),
+      pre:has(code[data-lang="json"]) {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+            
+      /* 通用代码块样式 */
+      code {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.875em;
+        line-height: 1.45;
+      }
+      
+      pre code {
+        display: block;
+        overflow-x: auto;
+        padding: 16px;
+        line-height: 1.45;
+        background-color: #f6f8fa;
+        border-radius: 6px;
+        font-size: 0.875em;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+     
+      /* 滚动条样式 */
+      pre::-webkit-scrollbar {
+        height: 8px;
+      }
+      
+      pre::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+      
+      pre::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      
+      pre::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+    
     {% include head-custom.html %}
   </head>
   <body>
@@ -41,7 +99,16 @@
         <a href="{{ site.github.tar_url }}" class="btn">Download .tar.gz</a>
       {% endif %}
     </header>
-
+    <!-- 添加导航栏 -->
+    <nav class="navigation">
+      <ul class="nav-list">
+        <li><a href="{{ site.baseurl }}/">首页</a></li>
+        <li><a href="{{ site.baseurl }}/inference/">推理</a></li>
+        <li><a href="{{ site.baseurl }}/transformers/">架构</a></li>
+        <li><a href="{{ site.baseurl }}/LLM/">模型</a></li>
+        <!-- 添加更多分类 -->
+      </ul>
+    </nav>
     <main id="content" class="main-content" role="main">
       {{ content }}
 

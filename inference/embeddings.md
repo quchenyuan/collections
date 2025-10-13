@@ -1,5 +1,6 @@
 ---
 ---
+
 # 嵌入模型
 
 嵌入模型将数据序列（文本或图像）转换为高维向量的语义表示形式，能够捕捉不同维度上的含义。
@@ -46,7 +47,7 @@ Qwen3 嵌入模型基于 Qwen3 基础模型的密集版本构建，提供三种�
 
 对于文本嵌入，我们使用具有因果注意力机制的 LLMs，并在输入序列末尾附加一个 [EOS] 标记。最终的嵌入向量来自对应于该 [EOS] 标记的最后层隐藏状态
 
-这意味着生成一个嵌入只需通过模型进行一次前向传播，提取对应于最后一个[EOS]标记的隐藏状态（见图 3）。换句话说，使用 Qwen3 的自回归版本时，<span style="color:magenta">**嵌入的计算**量几乎与完成**预填充阶段**或生成第一个输出标记完全相同</span>。
+这意味着生成一个嵌入只需通过模型进行一次前向传播，提取对应于最后一个[EOS]标记的隐藏状态（见图 3）。换句话说，使用 Qwen3 的自回归版本时，<font color="magenta">**嵌入的计算**量几乎与完成**预填充阶段**或生成第一个输出标记完全相同</font>。
 
 ![图 3：Qwen3-Embedding 的模型架构](./images/qwen3-arch.png)
 
@@ -57,12 +58,12 @@ Qwen3 嵌入模型基于 Qwen3 基础模型的密集版本构建，提供三种�
 LLaMA 模型前向传播的总 FLOPs 为，参考
 
 $$
-\begin{aligned}
+\begin{align}
 \text{Total FLOPs of Llama} = {} & \text{num\_hidden\_layers} \times \\
 & (10S \times \text{hidden\_size} + 25.5S \times \text{hidden\_size}^2 \\
 & + 4S^2 \times \text{hidden\_size} + 5S^2 \times \text{num\_attention\_heads}) \\
 & + 2 \times \text{hidden\_size} \times \text{vocab\_size}
-\end{aligned}
+\end{align}
 $$
 
 其中 S 是处理序列的序列长度。
@@ -100,24 +101,24 @@ Qwen3 和 Llama3 具有非常相似的架构。两者都是密集因果 Transfor
 }
 ```
 
-由于在嵌入表示中仅使用对应于[EOS]标记的最后层隐藏状态，而无需计算下一个预测标记的概率分布，即<span style="color:magenta">可以省去计算语言模型头部（LM head）的浮点运算量（FLOPs）</span>。虽然池化层会引入一些额外的 FLOPs，但这些操作涉及的运算非常少，简化起见可以忽略。这样前向传播的总计算量变为：
+由于在嵌入表示中仅使用对应于[EOS]标记的最后层隐藏状态，而无需计算下一个预测标记的概率分布，即<font color="magenta">可以省去计算语言模型头部（LM head）的浮点运算量（FLOPs）</font>。虽然池化层会引入一些额外的 FLOPs，但这些操作涉及的运算非常少，简化起见可以忽略。这样前向传播的总计算量变为：
 
 $$
-\begin{aligned}
+\begin{align}
 \text{Total FLOPs of Qwen Embedding} = {} & \text{num\_hidden\_layers} \times \\
 & (10S \times \text{hidden\_size} + 25.5S \times \text{hidden\_size}^2 \\
 & + 4S^2 \times \text{hidden\_size} + 5S^2 \times \text{num\_attention\_heads})
-\end{aligned}
+\end{align}
 $$
 
 假设正在处理 S=1024 个标记，并使用上面的 Qwen 配置（`num_hidden_layers=36，hidden_size=4096，num_attention_heads=32` ），我们可以很容易地估算出总的 FLOPs 为：
 
-$\begin{aligned}
+$\begin{align}
 \text{Total FLOPs of Qwen Embedding} = {} & 36 \times \\
 & (10 \times 1024 \times \text{4096} + 25.5 \times 1024 \times \text{4096}^2 \\
 & + 4 \times 1024^2 \times \text{4096} + 5 \times 1024^2 \times \text{32})=\\
 & 16.4 \text{ TFLOPs}
-\end{aligned}$
+\end{align}$
 
 利用这一点，我们可以轻松估算处理一个包含 1024 个标记的句子所需时间的上限。为此，我们需要查看 GPU 的浮点运算性能（FLOPS）和内存带宽。性能瓶颈可能出现在两个方面：需要执行太多操作（计算受限）或需要加载过多数据（内存受限）。
 

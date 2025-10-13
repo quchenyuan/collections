@@ -1,13 +1,17 @@
+
 ---
 layout: default
-title: 示例文档
+title: 文档导航
 ---
 
-这是一个测试公式：
+# 文档导航
 
-行内公式：$E = mc^2$
+<ul>
+{% assign pages_list = site.pages | sort: "path" %}
+{% for page in pages_list %}
+  {% if page.path != "index.md" and page.name contains ".md" %}
+    <li><a href="{{ page.url | relative_url }}">{{ page.path }}</a></li>
+  {% endif %}
+{% endfor %}
+</ul>
 
-块级公式：
-$$
-\int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
-$$

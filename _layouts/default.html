@@ -1,19 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>{{ page.title }}</title>
-  {{ site.title }}
-  <!-- MathJax 配置 -->
   <script>
-    MathJax = {
-      tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]},
-      svg: {fontCache: 'global'}
-    };
+    MathJax = { tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}, svg: {fontCache: 'global'} };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
 <body>
+  <nav>
+    <ul>
+      <li><a href="{{ "/" | relative_url }}">首页</a></li>
+      <li><a href="{{ "/inference/embeddings.html" | relative_url }}">embeddings</a></li>
+      <li><a href="{{ "/LLM/GPT-oss.html" | relative_url }}">GPT-oss</a></li>
+      <li><a href="{{ "/MMDiT/stable-diffusion-3.html" | relative_url }}">Stable Diffusion 3</a></li>
+      <!-- 其他目录 -->
+    </ul>
+  </nav>
+  <hr>
+
   {{ content }}
 </body>
 </html>

@@ -1,4 +1,4 @@
-#  Rubin CPX
+#  Rubin CPX 
 
 > [原文地址](https://mp.weixin.qq.com/s/5oyNhocptR0PD4IB3p5wXA)
 
@@ -46,6 +46,16 @@ Rubin CPX是一颗基于 Rubin 架构但使用 GDDR7 的芯片。相对于基于
 
 
 ![图片](images/rubin cpx nvl144.png)
+
+- Vera CPU 包含 88 个 Arm Core。
+- Rubin GPU 包含 288GB HBM4 显存，带宽为 13TB/s，50 PF FP4 算力，2 个 Die。
+- Rubin GPU 的 <span style="color:magenta"> FP4 算力是 FP8 的 3x</span>>，与 B300 一致。
+- Vera Fast Memory 为 (75TB - 288GB*72) / 36 = 1.5TB。
+- NVLink6 带宽为 260/72 = 3.6 TB/s。
+- ConnectX-9 网卡带宽为 28.8TB/s / 144 = 200 GB/s = 1600 Gbps(宣传值，实际值为800)。
+-  <span style="color:magenta">HBM4 总带宽为 13*72=936TB/s</span>
+  - 上图中1.4PB/s 实际是 HBM4 带宽 936 TB/s + Vera Fast Memory 带宽，因此后续统一称作 Memory 带宽，这种情况下 Vera CPU 的 Fast Memory 的带宽为 (1.4 PB/s - 936 TB/s)/36 = 0.46 TB/s / 36 = 13TB/s。
+  - 后续会像 AMD MI400 Series 一样，采用 432GB 的 HBM4，显存带宽为 432/288*13 = 19.6 TB/s。
 
 
 
@@ -144,3 +154,8 @@ Nvidia官方有这样一个描述, Prefill 阶段是一个Compute Bound的计算
 ### 混合调度方案
 
 是否还是在NVL144中配置xPyD的方案, 仅对SeqLen很长的任务Offload到Rubin CPX处理? 这也是一个潜在的可以尝试的调度策略. 因为我们还需要考虑KVcache对显存的占用. Rubin CPX毕竟只有128GB的显存. 例如对于一个256K Seqlen的Prefill最高能到多少并发也需要根据模型计算的.
+
+
+
+NVL576
+

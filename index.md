@@ -13,9 +13,18 @@ title: 文档导航
 # {{ level1.name }}
 
     {% assign subitems = level1.items | sort: "path" %}
-    {% assign subgroups = subitems | group_by_exp: "page", "
-      page.path | split: '/' | size > 2 ?
-      page.path | split: '/' | slice: 1, 1 | first : ''" %}
+    {% for file in subitems %}
+      {% assign path_parts = file.path | split: '/' %}
+      {% assign part_count = path_parts | size %}
+      {% if part_count > 2 %}
+        {% assign subgroup_name = path_parts[1] %}
+      {% else %}
+        {% assign subgroup_name = "" %}
+      {% endif %}
+      {% assign file.subgroup = subgroup_name %}
+    {% endfor %}
+
+    {% assign subgroups = subitems | group_by: "subgroup" %}
     {% for subgroup in subgroups %}
       {% if subgroup.name != "" %}
 ## {{ subgroup.name }}
@@ -29,4 +38,3 @@ title: 文档导航
     {% endfor %}
   {% endunless %}
 {% endfor %}
-

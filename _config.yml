@@ -8,3 +8,9 @@ kramdown:
   input: GFM
   hard_wrap: false
   syntax_highlighter: rouge
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"

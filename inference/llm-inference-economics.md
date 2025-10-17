@@ -1,7 +1,7 @@
 ---
 ---
 
->  [原文链接](https://www.tensoreconomics.com/p/llm-inference-economics-from-first?open=false#%C2%A7total-flops-calculation)
+> [原文链接](https://www.tensoreconomics.com/p/llm-inference-economics-from-first?open=false#%C2%A7total-flops-calculation)
 >
 > [原文代码](https://github.com/tugot17/llm-inference-economics-from-first-principles)
 
@@ -70,7 +70,7 @@
 
   $$
   \begin{align}
-  
+
   w_q &= H \times n\_heads \times d\_head = H^2 \\
   w_k &= H \times n\_kv\_heads \times d\_head \\
   w_v &= H \times n\_kv\_heads \times d\_head \\
@@ -369,6 +369,7 @@ $$
 在预填充阶段，S 个令牌：
 
 $$ \mathbf{Q} \in \mathbb{R}^{S \times H}; \mathbf{K^T} \in \mathbb{R}^{H \times S}; \mathbf{V} \in \mathbb{R}^{S \times H}$$
+
 注意力得分和输出的计算方式：
 
 $$
@@ -383,19 +384,22 @@ $$
 \mathbf{Q}_{new} &\in \mathbb{R}^{1 \times H} \text{ [Only for the new token]} \\
 \mathbf{K}^T_{cache} &\in \mathbb{R}^{H \times S} \text{ [From cache]} \\
 \mathbf{K}^T_{new} &\in \mathbb{R}^{H \times 1} \text{ [For the new token]} \\
-\mathbf{K}^T_{full} &= [\mathbf{K}^T_{cache} \; | \; \mathbf{K}^T_{new}] \in \mathbb{R}^{{H} \times (S+1)} \\
+\mathbf{K}^T_{full} &= [\mathbf{K}^T_{cache} \; | \; \mathbf{K}^T_{new}] \in \mathbb{R}^{H \times (S+1)} \\
 \mathbf{V}_{cache} &\in \mathbb{R}^{S \times H} \text{ [From cache]} \\
 \mathbf{V}_{new} &\in \mathbb{R}^{1 \times H} \text{ [For the new token]} \\
 \mathbf{V}_{full} &= [\mathbf{V}_{cache} \; | \; \mathbf{V}_{new}] \in \mathbb{R}^{(S+1) \times H}
 \end{align}
 $$
+
 新的注意力计算变为：
+
 $$
 \begin{align}
 \text{Score Vector} &= \mathbf{Q}_{new} \cdot \mathbf{K}^T_{full} \in \mathbb{R}^{1 \times (S+1)} \\
 \text{Attention Output} &= \text{softmax}(\text{Score Vector}) \cdot \mathbf{V}_{full} \in \mathbb{R}^{1 \times H}
 \end{align}
 $$
+
 将每次新生成 token 的注意力计算从 $O(S^2)$ 降低到 $O(S)$
 
 ![img](images/decode.png)
@@ -406,8 +410,6 @@ KV 缓存将前向传播的总 FLOPs 减少了大约 S 倍：
 
 - 在 MLP 和 LM 头中，只处理新令牌
 - LM 头保持不变，但它在整体计算中所占的比例非常小，因此可以忽略
-
-
 
 例如，使用 2048 个 token 的上下文：
 
@@ -430,15 +432,15 @@ $$kv \ cache = 2 \times 2 \times 80 \times 128 \times 8 \times 2048 = 671MB$$
 
 Llama 3.3 70B 的 KV 缓存内存占用如何随着序列长度增加而增长。上图 x 轴使用对数刻度（2 的幂），在视觉上压缩了指数增长。实际上，<font color=red>内存使用量随序列长度呈**超线性增长**</font>，而不是像从图表外观可能错误推断的线性增长。
 
-虽然 671 MB 听起来不多，但该数字会随着批处理大小和序列长度线性增长（见图 9）。<font color=red>序列长度较长时，逐个生成 token 的速度比在较短序列长度下更慢</font>，因为除了需要从全局内存中加载模型权重外，还需要加载KV 缓存，从而增加了每个生成 token 的处理时间。
+虽然 671 MB 听起来不多，但该数字会随着批处理大小和序列长度线性增长（见图 9）。<font color=red>序列长度较长时，逐个生成 token 的速度比在较短序列长度下更慢</font>，因为除了需要从全局内存中加载模型权重外，还需要加载 KV 缓存，从而增加了每个生成 token 的处理时间。
 
 模型权重加上 KV 缓存大约是 `141 + 0.6 ≈ 142GB` ，因此从全局内存加载需要 `142/3350 = 0.04s` 。上面计算过，在 H100 GPU 上完成所有计算（假设 100% 计算利用率）只需要 `0.00014s` ，因此加载模型权重的时间比实际计算要多两个数量级。因此，使用 LLMs 的逐 token 阶段是内存受限的，主要限制在于内存传输所需的时间，而不是计算速度。
 
 ### 输入长度的扩展性
 
-LLM 服务的主要挑战之一是理解输入提示长度如何影响端到端性能。提示处理阶段表现出 $O(N^2)$  的计算复杂度，随着序列长度的增长，处理时间将呈二次方增长。根据之前推导出的 FLOPs ：
+LLM 服务的主要挑战之一是理解输入提示长度如何影响端到端性能。提示处理阶段表现出 $O(N^2)$ 的计算复杂度，随着序列长度的增长，处理时间将呈二次方增长。根据之前推导出的 FLOPs ：
 
-- $Q \times  K ^T$ 得分矩阵为$2S^2H$， $ (Q \times K^T) \otimes V$  注意力输出为$2S^2H$
+- $Q \times  K ^T$ 得分矩阵为$2S^2H$， $ (Q \times K^T) \otimes V$ 注意力输出为$2S^2H$
 
 这对于较长的序列尤其重要，因为生成第一个标记的时间会随着输入序列的长度呈二次方增长。因此，随着输入长度不断增加，处理请求的总时间中，会有越来越大比例花在提示处理上——即计算密集型部分。
 
@@ -454,8 +456,6 @@ LLM 服务的主要挑战之一是理解输入提示长度如何影响端到端�
 
 这种转变产生了两种不同的性能模式：<font color=magenta>**模型主导模式**（短序列/小批量）</font>，尽管序列长度增加，吞吐量仍保持相对稳定。一旦进入<font color=magenta> **KV 缓存主导模式**</font>，生成速度开始随着序列长度成比例下降。这在短序列长度时无关紧要，但对于非常长的序列（数万 token 级别）是一个显著的问题，加载 KV 缓存所花费的额外时间相对于序列长度呈线性增长。
 
-
-
 ![img](images/memroy_util.png)
 
 > 随着序列长度增加，KV 缓存的扩展情况。对于 Llama 3.3 70B，在 128k 个 token 时，单个句子的 KV 缓存将达 40GB。
@@ -463,6 +463,7 @@ LLM 服务的主要挑战之一是理解输入提示长度如何影响端到端�
 在注意力机制的简单实现中，当实现 `SxS` 分数矩阵时，内存也会以平方级别增长，但 Flash Attention 机制取代了简单实现。Flash Attention 通过迭代方式计算 `(Q @ Kᵗ) @ V` ，其所需的内存保持在 `O(N)` 。
 
 - **Naive（朴素）注意力实现**，中间矩阵 `S`（即 `QKᵀ`）的大小是 `S×S`，所以 **内存占用为 O(S²)**。当序列很长时，仅一个注意力头就可能耗尽 GPU 显存。
+
   1. 计算 **注意力分数矩阵**：`S = Q @ Kᵀ`，形状为 `(seq_len, seq_len)`，记作 `S×S`（S = sequence length）。
   2. 对 `S` 做 softmax。
   3. 计算输出：`O = softmax(S) @ V`。
@@ -472,7 +473,7 @@ LLM 服务的主要挑战之一是理解输入提示长度如何影响端到端�
   2. 在片上（on-chip）计算局部 `q_i @ k_jᵀ` 和 softmax 归约，**只保留最终输出 O，不保存中间 S 矩阵**。
   3. 通过 **重计算（recomputation）** 技术，在反向传播时重新计算前向的局部块，避免存储中间结果。
 
-## 多GPU推理
+## 多 GPU 推理
 
 H100 显卡配备了 80GB 的 HBM 内存，仅使用两张 GPU 来运行 Llama 3.3 70B 将导致 KV 缓存可用的内存非常有限，模型权重已经占用了 88% ( `141/160=88%` ) 的内存，只剩下 19GB 的内存 ( `160-141=19GB` ) 可供 KV 缓存使用（实际上比这还要少，因为无法使用 100% 的 GPU 内存，而只能使用大约 95%）。将无法运行大批量或长序列长度的任务。
 
@@ -498,14 +499,12 @@ $\mathbf{y}_1 = \mathbf{h}_1 \mathbf{W}_{2,1}, \quad \mathbf{y}_2 = \mathbf{h}_2
 
 最终输出需要一个全归约求和，即需要在设备之间进行同步：$\mathbf{y}=\mathbf{y_1} + \mathbf{y_2}$
 
-
-
 这种布局可以应用于 Transformer 块，每个 Transformer 仅需两次同步：
 
 - 自注意力：各个头独立处理，仅在输出投影时同步（ `o_proj` ）。
 - MLP：上投影（ `w1,` `w3)` ）按列分割，下投影（ `w2)` ）按行分割，同步操作仅在下投影之后执行。
 
-pytorch文档中的[tp_plan](https://docs.pytorch.org/tutorials/intermediate/TP_tutorial.html)：
+pytorch 文档中的[tp_plan](https://docs.pytorch.org/tutorials/intermediate/TP_tutorial.html)：
 
 ```python
 layer_tp_plan = {
@@ -528,15 +527,15 @@ layer_tp_plan = {
 1. 消息传递延迟：通常为 3-5 微秒，具体取决于硬件
 2. 数据传输时间：基于互连带宽
 
-在理想情况下，使用现代 NVLink 连接，可以估计4张H100的情况下：
+在理想情况下，使用现代 NVLink 连接，可以估计 4 张 H100 的情况下：
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \text{Overhead} &\approx \frac{\text{params} \times \text{comms/layer} \times \text{hidden size} \times \text{number of layers} \times (N-1)/N}{\text{bandwidth}} \\
 &= \frac{2 \times 2 \times 8192 \times 80 \times 3/4}{450 \times 10^9} \\
 &\approx 4\ \mu\text{s}
-\end{aligned}$$
-
-
+\end{aligned}
+$$
 
 总计 8 或 9 微秒的开销非常理想。然而，在实践中情况要复杂得多。在<font color=red>同步屏障期间，计算图会停滞。 GPU 在等待同步完成时处于空闲状态，会产生几毫秒的恒定开销</font>。这个额外的“税”是阻止充分利用所有 GPU 可用内存带宽的主要原因之一。准确地<font color=magenta>对开销进行建模</font>颇具挑战性，理论性能与实际性能之间的差距可能相当大，因此需要通过实证测量来进行精确的系统建模。
 
@@ -551,8 +550,6 @@ $$\begin{aligned}
 ![img](images/kvcache-weights.png)
 
 > KV 缓存随批次大小线性扩展
-
-
 
 ## 吞吐量
 
@@ -592,8 +589,6 @@ $$\begin{aligned}
 
 ![img](images/throughput-after-optimizer.png)
 
-
-
 虽然远非完美，但它确实可以工作。它对其他规模的模型也有很好的泛化能力；例如，在 TP1 上运行的 Llama 3.1 8B 模型同样适用。然而，当尝试不同长度的不同批次时，差异更加显著，这表明模型远非完美。例如，尝试估计长上下文模型性能的吞吐量时，输入 16k 个 token，输出 1000 个 token。由于内存消耗过多，设置保持为 8 的批处理大小。在这种情况下，模型未能正确预测最终的吞吐量，这表明我们的模型远非完美。
 
 ![img](https://substackcdn.com/image/fetch/$s_!oQY5!,w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F3b03f24e-9275-4224-8da9-62b2c6878e3b_5838x2808.png)
@@ -602,11 +597,7 @@ $$\begin{aligned}
 
 > 对于不同的输入/输出配置（在本例中为 16k tokens 输入，1k tokens 输出），模型对吞吐量的估计准确性较低，尤其是对于 Llama 3.3 70B，而对 Llama 3.1 8B 的影响较小。
 
-
-
 正确预测模型吞吐量非常困难，准确估计需要一系列非常详细的性能分析步骤，例如分析跨多种模型大小、批量大小和提示长度组合的内存访问模式；深入研究（分页）注意力机制实现的具体细节；批量调度的实现细节；评估不同形状对计算和内存利用率的影响；以及进行数十种不同的实验。我们认为，<font color=red>在不同设置下进行准确估计的难度极高，以至于在实践中可能并不可行</font>。如果您想要准确的结果，直接测量真实世界的结果可能是更好的选择。
-
-
 
 ## 总结
 
@@ -617,7 +608,5 @@ $$\begin{aligned}
 在评估用于 LLM 推理的硬件时，<font color=magenta>**内存大小**并非唯一重要因素，**内存带宽**同样重要，甚至更为关键</font>。由于逐个生成 token 的过程主要受内存限制，因此应该始终问一句：“内存速度是多少？”因为这决定了模型运行的速度。例如，NVIDIA L40S GPU 提供 48GB 内存，但带宽仅为 864 GB/s（相比 H100 卡的 3350），导致推理速度非常慢。同样，配备 M3 Ultra 芯片的 Apple Mac Studio 拥有 512GB 统一内存，但内存带宽仅为 819GB/s（见图 25），尽管内存池很大，其 LLM 推理能力仍然受到限制。
 
 ![img](images/bandwith-size.png)
-
-
 
 此外，在边缘设备上运行模型时，每个令牌的价格会相对昂贵。因为在消费者终端设备上运行时，批处理大小始终为 1，无法享受在多个用户之间分摊模型加载成本的规模经济效应。用户总是自己承担整个设备和能源成本，再加上边缘硬件的特性不佳和内存速度较慢，这将导致诸如电力和硬件折旧等高成本。

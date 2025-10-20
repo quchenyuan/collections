@@ -1,0 +1,27 @@
+{% comment %}
+递归打印目录树
+参数：
+- tree: 当前目录节点（字典结构）
+- indent: 层级（数字），用来决定标题级别
+{% endcomment %}
+
+{% assign indent = include.indent | default: 1 %}
+{% assign tree_data = include.tree %}
+
+{% for key in tree_data %}
+  {% if key == "__files" %}
+    {% comment %} 输出当前目录的所有 md 文件链接 {% endcomment %}
+    {% for file in tree_data["__files"] %}
+      {% assign filename_parts = file.path | split: '/' %}
+      {% assign filename = filename_parts | last %}
+      {% assign filename_no_ext = filename | split: '.' | first %}
+- [{{ filename_no_ext }}]({{ file.url | relative_url }})
+    {% endfor %}
+  {% else %}
+    {% comment %} 子目录标题 {% endcomment %}
+{% for i in (1..indent) %}#{% endfor %} {{ key }}
+    {% assign subtree = tree_data[key] %}
+    {% include print_tree.liquid tree=subtree indent=indent | plus: 1 %}
+  {% endif %}
+{% endfor %}
+

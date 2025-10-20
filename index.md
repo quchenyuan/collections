@@ -3,8 +3,8 @@ layout: default
 ---
 # 文档导航
 
-{% assign md_files = site.pages | sort: "path" | where_exp: "item", "item.path contains '.md'" %}
-{% assign md_files = md_files | reject: "path", "index.md" %}
+{% assign md_files = site.static_files | where_exp: "item", "item.path ends_with '.md'" %}
+{% assign md_files = md_files | sort: "path" %}
 
 {% assign current_path_parts = "" | split: "" %}
 
@@ -27,7 +27,6 @@ layout: default
 
   {% assign filename = parts | last %}
   {% assign filename_no_ext = filename | split: '.' | first %}
-- [{{ filename_no_ext }}]({{ file.url | relative_url }})
-
+- [{{ filename_no_ext }}]({{ file.path | relative_url }})
 {% endfor %}
 

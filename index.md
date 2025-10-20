@@ -2,66 +2,49 @@
 layout: default
 ---
 
-<h1>文档导航</h1>
+# 文档导航
 
-{% comment %}
-  Step 1: 获取所有 .md 页面（排除 index.md）
-{% endcomment %}
-{% assign all_md_pages = site.pages | where_exp: "page", "page.path contains '.md'" | where_exp: "page", "page.path != 'index.md'" | sort: "path" %}
+{% assign pages = site.pages | where_exp: "p", "p.path contains '.md'" | where_exp: "p", "p.path != 'index.md'" | sort: "path" %}
 
-{% comment %}
-  Step 2: 提取所有目录路径
-{% endcomment %}
-{% assign all_dirs = "" | split: "" %}
-{% for page in all_md_pages %}
-  {% assign parts = page.path | split: '/' %}
-  {% assign dir = "" %}
+{% comment %}收集所有目录路径{% endcomment %}
+{% assign dirs = "" | split: "" %}
+{% for p in pages %}
+  {% assign parts = p.path | split: '/' %}
+  {% assign path = "" %}
   {% for part in parts offset: 1 %}
     {% if forloop.last %}{% break %}{% endif %}
-    {% if dir == "" %}
-      {% assign dir = part %}
+    {% if path == "" %}
+      {% assign path = part %}
     {% else %}
-      {% assign dir = dir | append: "/" | append: part %}
+      {% assign path = path | append: "/" | append: part %}
     {% endif %}
-    {% unless all_dirs contains dir %}
-      {% assign all_dirs = all_dirs | push: dir %}
+    {% unless dirs contains path %}
+      {% assign dirs = dirs | push: path %}
     {% endunless %}
   {% endfor %}
 {% endfor %}
 
-{% comment %}
-  Step 3: 排序并渲染目录标题（输出 HTML h2, h3...）
-{% endcomment %}
-{% assign sorted_dirs = all_dirs | sort: "size" %}
-{% assign rendered_dirs = "" | split: "" %}
-
+{% comment %}按深度排序并输出标题{% endcomment %}
+{% assign sorted_dirs = dirs | sort: "size" %}
+{% assign seen = "" | split: "" %}
 {% for dir in sorted_dirs %}
   {% assign parts = dir | split: '/' %}
-  {% assign depth = parts | size %}
-  {% assign skip = false %}
-  {% for r in rendered_dirs %}
-    {% if dir == r %}{% assign skip = true %}{% endif %}
-  {% endfor %}
-  {% unless skip %}
-    {% assign rendered_dirs = rendered_dirs | push: dir %}
-    {% assign level = depth | plus: 1 %}
-    {% if level > 6 %}{% assign level = 6 %}{% endif %}
-    {% capture tag %}h{{ level }}{% endcapture %}
-    <{{ tag }}>{{ parts | last }}</{{ tag }}>
+  {% assign depth = parts.size %}
+  {% unless seen contains dir %}
+    {% assign seen = seen | push: dir %}
+    {% assign hashes = "" %}
+    {% for i in (1..depth) %}{% assign hashes = hashes | append: "#" %}{% endfor %}
+{{ hashes }} {{ parts.last }}
   {% endunless %}
 {% endfor %}
 
-{% comment %}
-  Step 4: 渲染文件列表（带缩进）
-{% endcomment %}
-<ul>
-{% for page in all_md_pages %}
-  {% assign parts = page.path | split: '/' %}
-  {% assign filename = parts | last | split: '.' | first %}
-  {% assign depth = parts | size | minus: 2 %}
+{% comment %}输出文件{% endcomment %}
+{% for p in pages %}
+  {% assign parts = p.path | split: '/' %}
+  {% assign name = parts.last | split: '.' | first %}
+  {% assign depth = parts.size | minus: 2 %}
   {% if depth < 0 %}{% assign depth = 0 %}{% endif %}
   {% assign indent = "" %}
-  {% for i in (1..depth) %}{% assign indent = indent | append: "&nbsp;&nbsp;" %}{% endfor %}
-  <li>{{ indent | raw }}<a href="{{ page.url | relative_url }}">{{ filename }}</a></li>
+  {% for i in (1..depth) %}{% assign indent = indent | append: "  " %}{% endfor %}
+- {{ indent }}[{{ name }}]({{ p.url | relative_url }})
 {% endfor %}
-</ul>

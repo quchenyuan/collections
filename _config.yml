@@ -9,6 +9,7 @@ markdown: kramdown
 kramdown:
   input: GFM
   hard_wrap: false
+  header_offset: 1
   syntax_highlighter: rouge
 defaults:
   - scope:

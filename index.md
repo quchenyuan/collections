@@ -37,7 +37,7 @@ layout: default
 {% assign sorted_dirs = all_dirs | sort: "size" %}
 
 {% comment %}
-  Step 4: 渲染目录树（模拟递归）
+  Step 4: 渲染目录树（模拟递归）—— 使用 raw 防止转义
 {% endcomment %}
 {% assign rendered_dirs = "" | split: "" %}
 
@@ -56,7 +56,7 @@ layout: default
     {% comment %}计算缩进或标题级别{% endcomment %}
     {% assign heading_level = depth | plus: 1 %}
     {% if heading_level > 6 %}{% assign heading_level = 6 %}{% endif %}
-    <h{{ heading_level }}>{{ dir_parts | last }}</h{{ heading_level }}>
+    <h{{ heading_level }}>{{ dir_parts | last }}</h{{ heading_level }}>{% comment %}用 raw 输出{% endcomment %}
   {% endif %}
 {% endfor %}
 

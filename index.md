@@ -7,47 +7,46 @@ layout: default
 {% assign pages = site.pages | where_exp: "p", "p.path contains '.md'" | where_exp: "p", "p.path != 'index.md'" | sort: "path" %}
 
 {% comment %}
-  用于记录已经输出过的目录路径，避免重复
+  收集所有目录路径（如 "GPU", "GPU/nvidia", "transformers/modules"）
 {% endcomment %}
-{% assign rendered_dirs = "" | split: "" %}
-
+{% assign all_dirs = "" | split: "" %}
 {% for p in pages %}
   {% assign parts = p.path | split: '/' %}
-  {% assign current_path = "" %}
-  {% assign dir_output_needed = false %}
-  {% assign dir_lines = "" | split: "" %}
-
-  {% comment %}
-    构建从根到文件所在目录的每一级路径，并检查是否已渲染
-  {% endcomment %}
+  {% assign current = "" %}
   {% for part in parts offset: 1 %}
     {% if forloop.last %}{% break %}{% endif %}
-    {% if current_path == "" %}
-      {% assign current_path = part %}
+    {% if current == "" %}
+      {% assign current = part %}
     {% else %}
-      {% assign current_path = current_path | append: "/" | append: part %}
+      {% assign current = current | append: "/" | append: part %}
     {% endif %}
-
-    {% unless rendered_dirs contains current_path %}
-      {% assign rendered_dirs = rendered_dirs | push: current_path %}
-      {% assign depth = current_path | split: '/' | size %}
-      {% assign hashes = "" %}
-      {% for i in (1..depth) %}{% assign hashes = hashes | append: "#" %}{% endfor %}
-      {% assign line = hashes | append: " " | append: part %}
-      {% assign dir_lines = dir_lines | push: line %}
+    {% unless all_dirs contains current %}
+      {% assign all_dirs = all_dirs | push: current %}
     {% endunless %}
   {% endfor %}
+{% endfor %}
 
-  {% comment %}
-    输出该文件路径中新增的目录标题（按顺序）
-  {% endcomment %}
-  {% for line in dir_lines %}
-{{ line }}
-  {% endfor %}
+{% comment %}
+  按深度排序（确保父目录在子目录前）
+{% endcomment %}
+{% assign sorted_dirs = all_dirs | sort: "size" %}
 
-  {% comment %}
-    输出文件本身（缩进 = 目录深度）
-  {% endcomment %}
+{% comment %}
+  渲染所有目录标题（用 #, ##, ###...）
+{% endcomment %}
+{% for dir in sorted_dirs %}
+  {% assign parts = dir | split: '/' %}
+  {% assign depth = parts | size %}
+  {% assign hashes = "" %}
+  {% for i in (1..depth) %}{% assign hashes = hashes | append: "#" %}{% endfor %}
+{{ hashes }} {{ parts | last }}
+{% endfor %}
+
+{% comment %}
+  渲染所有文件（按路径缩进）
+{% endcomment %}
+{% for p in pages %}
+  {% assign parts = p.path | split: '/' %}
   {% assign filename = parts | last | split: '.' | first %}
   {% assign depth = parts | size | minus: 2 %}
   {% if depth < 0 %}{% assign depth = 0 %}{% endif %}

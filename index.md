@@ -1,10 +1,16 @@
 ---
 layout: default
 ---
+
 # 文档导航
 
-{% assign md_files = site.pages | where_exp: "item", "item.path contains '.md'" %}
-{% assign md_files = md_files | reject: "path", "index.md" %}
+{% assign all_md_files = "" | split: "" %}
+{% for collection in site.collections %}
+  {% assign all_md_files = all_md_files | concat: collection.docs %}
+{% endfor %}
+{% assign all_md_files = all_md_files | concat: site.pages %}
+
+{% assign md_files = all_md_files | where_exp: "item", "item.path contains '.md'" | reject: "path", "index.md" %}
 {% assign sorted_files = md_files | sort: "path" %}
 
 {% assign tree = {} %}
@@ -15,7 +21,6 @@ layout: default
 
   {% for part in parts %}
     {% assign is_last = forloop.last %}
-
     {% if is_last %}
       {% assign current_files = current_node["__files"] | default: "" | split: "" %}
       {% assign current_files = current_files | push: file %}

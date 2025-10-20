@@ -1,38 +1,33 @@
 ---
 layout: default
 ---
-
 # 文档导航
 
-{% assign all_md_files = "" | split: "" %}
-{% for collection in site.collections %}
-  {% assign all_md_files = all_md_files | concat: collection.docs %}
-{% endfor %}
-{% assign all_md_files = all_md_files | concat: site.pages %}
+{% assign md_files = site.pages | sort: "path" | where_exp: "item", "item.path contains '.md'" %}
+{% assign md_files = md_files | reject: "path", "index.md" %}
 
-{% assign md_files = all_md_files | where_exp: "item", "item.path contains '.md'" | reject: "path", "index.md" %}
-{% assign sorted_files = md_files | sort: "path" %}
+{% assign current_path_parts = "" | split: "" %}
 
-{% assign tree = {} %}
-
-{% for file in sorted_files %}
+{% for file in md_files %}
   {% assign parts = file.path | split: '/' %}
-  {% assign current_node = tree %}
+  {% assign depth = parts | size %}
 
-  {% for part in parts %}
-    {% assign is_last = forloop.last %}
-    {% if is_last %}
-      {% assign current_files = current_node["__files"] | default: "" | split: "" %}
-      {% assign current_files = current_files | push: file %}
-      {% assign current_node = current_node | merge: {"__files": current_files} %}
-    {% else %}
-      {% if current_node[part] == nil %}
-        {% assign current_node = current_node | merge: { part: {} } %}
-      {% endif %}
-      {% assign current_node = current_node[part] %}
+  {%- comment -%}
+    遍历每级目录，如果和上一个文件的路径不同就输出标题
+  {%- endcomment -%}
+  {% for i in (0..depth-2) %}
+    {% assign dir_name = parts[i] %}
+    {% if dir_name != current_path_parts[i] %}
+      {% assign heading_level = i | plus: 1 %}
+{% for j in (1..heading_level) %}#{% endfor %} {{ dir_name }}
     {% endif %}
   {% endfor %}
-{% endfor %}
 
-{% include print_tree.liquid tree=tree indent=1 %}
+  {% assign current_path_parts = parts %}
+
+  {% assign filename = parts | last %}
+  {% assign filename_no_ext = filename | split: '.' | first %}
+- [{{ filename_no_ext }}]({{ file.url | relative_url }})
+
+{% endfor %}
 

@@ -35,7 +35,7 @@ layout: default
 {% assign sorted_dirs = all_dirs | sort: "size" %}
 
 {% comment %}
-  Step 4: 渲染目录标题（使用 #, ##, ###...）
+  Step 4: 渲染目录标题（使用 #, ##, ###... + 空行分隔）
 {% endcomment %}
 {% assign rendered_dirs = "" | split: "" %}
 {% for dir in sorted_dirs %}
@@ -50,7 +50,8 @@ layout: default
     {% assign hashes = "" %}
     {% for i in (1..depth) %}{% assign hashes = hashes | append: "#" %}{% endfor %}
 {{ hashes }} {{ parts | last }}
-  {% endunless %}
+
+{% endunless %}
 {% endfor %}
 
 {% comment %}
@@ -64,4 +65,5 @@ layout: default
   {% assign indent = "" %}
   {% for i in (1..depth) %}{% assign indent = indent | append: "  " %}{% endfor %}
 - {{ indent }}[{{ filename }}]({{ page.url | relative_url }})
+
 {% endfor %}

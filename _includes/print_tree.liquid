@@ -20,8 +20,9 @@
   {% else %}
     {% comment %} 子目录标题 {% endcomment %}
 {% for i in (1..indent) %}#{% endfor %} {{ key }}
+    {% assign next_indent = indent | plus: 1 %}
     {% assign subtree = tree_data[key] %}
-    {% include print_tree.liquid tree=subtree indent=indent | plus: 1 %}
+    {% include print_tree.liquid tree=subtree indent=next_indent %}
   {% endif %}
 {% endfor %}
 
